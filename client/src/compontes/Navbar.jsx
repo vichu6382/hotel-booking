@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
-import { useClerk, UserButton } from "@clerk/clerk-react";
-import { useAppContext } from "../context/AppContext";
+import { useClerk, UserButton, useUser } from "@clerk/clerk-react";
 
 const BookIcon = () => (
   <svg
@@ -35,13 +34,12 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-
-
   const { openSignIn } = useClerk();
+  const { user } = useUser();
+  const navigate = useNavigate();
   const location = useLocation();
 
-
-  const {user , navigate , isOwner , setShowHotelReg} = useAppContext()
+  // const {user , navigate , isOwner , setShowHotelReg} = useAppContext()
 
   useEffect(() => {
     if (location.pathname !== "/") {
@@ -100,9 +98,13 @@ const Navbar = () => {
             className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${
               isScrolled ? "text-black" : "text-white"
             } transition-all`}
-            onClick={() =>  isOwner ? navigate("/owner") : setShowHotelReg(true)}
+            onClick={() => navigate('/owner')}
+            // onClick={() =>
+            //   isOwner ? navigate("/owner") : setShowHotelReg(true)
+            // }
           >
-           {isOwner ? ' Dashboard' : 'List Your Hotel'}
+            {/* {isOwner ? " Dashboard" : "List Your Hotel"} */}
+            Dashboard
           </button>
         )}
       </div>
@@ -183,9 +185,14 @@ const Navbar = () => {
         {user && (
           <button
             className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all"
-             onClick={() =>  isOwner ? navigate("/owner") : setShowHotelReg(true)}
+            // onClick={() =>
+            //   isOwner ? navigate("/owner") : setShowHotelReg(true)
+            // }
+            onClick={() => navigate('/owner')}
+
           >
-            {isOwner ? ' Dashboard' : 'List Your Hotel'}
+            {/* {isOwner ? " Dashboard" : "List Your Hotel"} */}
+            DashBorad
           </button>
         )}
 
