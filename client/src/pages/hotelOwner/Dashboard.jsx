@@ -1,9 +1,37 @@
-import React, { useState } from "react";
+import  { useState, useEffect } from "react";
+import { assets } from "../../assets/assets";
+import { useAppContext } from "../../context/AppContext";
 import Title from "../../compontes/Title";
-import { assets, dashboardDummyData } from "../../assets/assets";
 
 const Dashboard = () => {
-  const [dashboradData, setDashboradData] = useState(dashboardDummyData);
+  const { currency, user, getToken, toast, axios } = useAppContext();
+
+  const [dashboardData, setDashboardData] = useState({
+    bookings: [],
+    totalBookings: 0,
+    totalRevenue: 0,
+  });
+
+  const fetchDashboardData = async () => {
+    try {
+      const { data } = await axios.get("/api/bookings/hotel", {
+        headers: { Authorization: `Bearer ${await getToken()}` },
+      });
+      if (data.success && data.dashboardData) {
+        setDashboardData(data.dashboardData);
+      } else {
+        toast.error(data.message || "Failed to fetch dashboard data");
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error.message);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
 
   return (
     <div className="">
@@ -23,13 +51,13 @@ const Dashboard = () => {
             className="mx-sm:hidden h-10"
           />
           <div className="flex flex-col sm:ml-4 font-medium">
-            <p className="text-blue-500 text-lg">Todal Bookings</p>
+            <p className="text-blue-500 text-lg">Total Bookings</p>
             <p className="text-neutral-400 text-base">
-              {dashboradData.totalBookings}
+              {dashboardData.totalBookings}
             </p>
           </div>
         </div>
-        {/* total Revence */}
+        {/* total Revenue */}
         <div className="bg-primary/3 border border-primary/10 rotate flex p-4 pr-8">
           <img
             src={assets.totalRevenueIcon}
@@ -37,9 +65,9 @@ const Dashboard = () => {
             className="mx-sm:hidden h-10"
           />
           <div className="flex flex-col sm:ml-4 font-medium">
-            <p className="text-blue-500 text-lg">Todal Revenue</p>
+            <p className="text-blue-500 text-lg">Total Revenue</p>
             <p className="text-neutral-400 text-base">
-              {dashboradData.totalBookings}
+              {currency} {dashboardData.totalRevenue}
             </p>
           </div>
         </div>
@@ -58,21 +86,21 @@ const Dashboard = () => {
                 Room Name
               </th>
               <th className="py-3 px-4 text-gray-800 font-medium text-center">
-                Todal Amount
+                Total Amount
               </th>
             </tr>
           </thead>
           <tbody className="text-sm">
-            {dashboradData.bookings.map((item, index) => (
+            {dashboardData.bookings.map((item, index) => (
               <tr key={index}>
                 <td className="py-3 px-4 text-gray-700 border-t border-gray-300">
-                  {item.user.username}
+                  {item.user?.username || item.user?.name || item.user?.email || "-"}
                 </td>
                 <td className="py-3 px-4 text-gray-700 border-t border-gray-300 max-sm:hidden">
-                  {item.room.roomType}
+                  {item.room?.roomType || "-"}
                 </td>
                 <td className="py-3 px-4 text-gray-700 border-t border-gray-300 text-center">
-                 $ {item.totalPrice}
+                  {currency} {item.totalPrice}
                 </td>
               </tr>
             ))}

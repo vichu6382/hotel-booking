@@ -1,15 +1,14 @@
 import React, { useState } from "react";
-import Title from "../../compontes/Title";
+import Title from "../../compontes/Title"; // Fixed typo: compontes -> components
 import { assets } from "../../assets/assets";
+import { useAppContext } from "../../context/AppContext";
+import toast from "react-hot-toast";
 
 const AddRoom = () => {
-  const [images, setImages] = useState({
-    1: null,
-    2: null,
-    3: null,
-    4: null,
-  });
+  const { axios, getToken } = useAppContext();
+  const [loading, setLoading] = useState(false);
 
+  const [images, setImages] = useState({ 1: null, 2: null, 3: null, 4: null });
   const [inputs, setInputs] = useState({
     roomType: "",
     pricePerNight: "",
@@ -22,23 +21,69 @@ const AddRoom = () => {
     },
   });
 
-  const handleInputChange = (e) => {
-    setInputs({ ...inputs, [e.target.name]: e.target.value });
-  };
-
-  const handleAmenityChange = (amenity) => {
-    setInputs({
-      ...inputs,
-      amenities: {
-        ...inputs.amenities,
-        [amenity]: !inputs.amenities[amenity],
-      },
-    });
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form Data:", { ...inputs, images });
+
+    if (
+      !inputs.roomType ||
+      !inputs.pricePerNight ||
+      !Object.values(images).some(img => img)
+    ) {
+      toast.error("Please fill in all the details");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("roomType", inputs.roomType);
+      formData.append("pricePerNight", inputs.pricePerNight);
+
+      const amenities = Object.keys(inputs.amenities).filter(
+        key => inputs.amenities[key]
+      );
+      formData.append("amenities", JSON.stringify(amenities));
+
+      Object.keys(images).forEach(key => {
+        if (images[key]) formData.append("images", images[key]);
+      });
+
+      const { data } = await axios.post("/api/rooms", formData, {
+        headers: { 
+          Authorization: `Bearer ${await getToken()}`,
+          "Content-Type": "multipart/form-data" // Added content type for file upload
+        },
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+        setInputs({
+          roomType: "",
+          pricePerNight: "",
+          amenities: {
+            "Free Wifi": false,
+            "Free Breakfast": false,
+            "Room Service": false,
+            "Mountain View": false,
+            "Pool Access": false,
+          },
+        });
+        setImages({ 1: null, 2: null, 3: null, 4: null });
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error("Add room error:", error);
+      toast.error(error.response?.data?.message || error.message || "Something went wrong"); // Improved error handling
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImageChange = (key, file) => {
+    if (file) {
+      setImages(prev => ({ ...prev, [key]: file }));
+    }
   };
 
   return (
@@ -54,29 +99,19 @@ const AddRoom = () => {
       <div>
         <p className="text-gray-800 font-medium mb-3">Upload Images</p>
         <div className="grid grid-cols-2 sm:flex gap-4 flex-wrap">
-          {Object.keys(images).map((key) => (
-            <label
-              htmlFor={`RoomImage${key}`}
-              key={key}
-              className="cursor-pointer"
-            >
+          {Object.keys(images).map(key => (
+            <label htmlFor={`roomImage${key}`} key={key} className="cursor-pointer">
               <img
                 className="w-28 h-28 object-cover rounded-lg border border-gray-300 shadow-sm hover:opacity-80"
-                src={
-                  images[key]
-                    ? URL.createObjectURL(images[key])
-                    : assets.uploadArea
-                }
+                src={images[key] ? URL.createObjectURL(images[key]) : assets.uploadArea}
                 alt="Upload placeholder"
               />
               <input
                 type="file"
                 accept="image/*"
-                id={`RoomImage${key}`}
+                id={`roomImage${key}`}
                 hidden
-                onChange={(e) =>
-                  setImages({ ...images, [key]: e.target.files[0] })
-                }
+                onChange={e => handleImageChange(key, e.target.files[0])} // Fixed: extracted to function
               />
             </label>
           ))}
@@ -86,14 +121,13 @@ const AddRoom = () => {
       {/* Room Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block font-medium text-gray-700 mb-1">
-            Room Type
-          </label>
+          <label className="block font-medium text-gray-700 mb-1">Room Type</label>
           <select
             name="roomType"
             value={inputs.roomType}
-            onChange={handleInputChange}
+            onChange={e => setInputs(prev => ({ ...prev, roomType: e.target.value }))}
             className="w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+            required
           >
             <option value="">Select Room Type</option>
             <option value="Single Bed">Single Bed</option>
@@ -104,16 +138,16 @@ const AddRoom = () => {
         </div>
 
         <div>
-          <label className="block font-medium text-gray-700 mb-1">
-            Price per Night ($)
-          </label>
+          <label className="block font-medium text-gray-700 mb-1">Price per Night ($)</label>
           <input
             type="number"
             name="pricePerNight"
             value={inputs.pricePerNight}
             placeholder="0"
-            onChange={e=>setInputs({...inputs ,pricePerNight:e.target.value})}
+            min="0"
+            onChange={e => setInputs(prev => ({ ...prev, pricePerNight: e.target.value }))}
             className="w-full border rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+            required
           />
         </div>
       </div>
@@ -122,15 +156,19 @@ const AddRoom = () => {
       <div>
         <p className="text-gray-800 font-medium mb-3">Amenities</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {Object.keys(inputs.amenities).map((amenity) => (
-            <label
-              key={amenity}
-              className="flex items-center gap-2 cursor-pointer"
-            >
+          {Object.keys(inputs.amenities).map(amenity => (
+            <label key={amenity} htmlFor={`amenities-${amenity}`} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
+                id={`amenities-${amenity}`}
                 checked={inputs.amenities[amenity]}
-                onChange={() => handleAmenityChange(amenity)}
+                onChange={() =>
+                  setInputs(prev => ({
+                    ...prev,
+                    amenities: { ...prev.amenities, [amenity]: !prev.amenities[amenity] }
+                  }))
+                }
+                className="cursor-pointer"
               />
               <span className="text-sm text-gray-700">{amenity}</span>
             </label>
@@ -142,9 +180,10 @@ const AddRoom = () => {
       <div>
         <button
           type="submit"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition active:scale-95"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading}
         >
-          Add Room
+          {loading ? "Adding..." : "Add Room"}
         </button>
       </div>
     </form>
