@@ -13,6 +13,10 @@ export const getUserData = async (req, res) => {
   }
 };
 
+
+
+
+
 // Store user recent searched cities
 export const storeRecentSreachCities = async (req, res) => {
   try {
