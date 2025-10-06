@@ -16,7 +16,11 @@ connectCloudinary();
 
 const app = express();
 
-app.use(cors()); // enable
+
+app.use(cors({
+  origin: 'https://ouickstay.vercel.app', // Change to your frontend URL
+  credentials: true
+}));
 
 // middleware
 app.use(express.json());
